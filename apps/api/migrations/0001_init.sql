@@ -122,18 +122,11 @@ CREATE TABLE contracts (
 CREATE TRIGGER contracts_kind_match
 BEFORE INSERT ON contracts
 BEGIN
-  SELECT CASE
-    WHEN (SELECT kind FROM users WHERE id = NEW.person_id) != NEW.person_kind
-      THEN RAISE(ABORT, '合同人员类型与账号类型不一致')
-    WHEN NEW.person_kind = 'employee' AND NEW.contract_kind != 'labor'
-      THEN RAISE(ABORT, '劳动员工只能签署劳动合同')
-    WHEN NEW.person_kind = 'collaborator' AND NEW.contract_kind != 'service'
-      THEN RAISE(ABORT, '项目合作方只能签署服务协议')
-    WHEN NEW.person_kind = 'employee' AND NEW.silent_confirm_agreed != 0
-      THEN RAISE(ABORT, '劳动合同不适用沉默视为确认')
-    WHEN NEW.silent_confirm_agreed = 1 AND (NEW.silent_confirm_days IS NULL OR NEW.silent_confirm_days < 1)
-      THEN RAISE(ABORT, '约定沉默确认时必须写明天数')
-  END;
+  SELECT RAISE(ABORT, '合同人员类型与账号类型不一致') WHERE (SELECT kind FROM users WHERE id = NEW.person_id) != NEW.person_kind;
+  SELECT RAISE(ABORT, '劳动员工只能签署劳动合同') WHERE NEW.person_kind = 'employee' AND NEW.contract_kind != 'labor';
+  SELECT RAISE(ABORT, '项目合作方只能签署服务协议') WHERE NEW.person_kind = 'collaborator' AND NEW.contract_kind != 'service';
+  SELECT RAISE(ABORT, '劳动合同不适用沉默视为确认') WHERE NEW.person_kind = 'employee' AND NEW.silent_confirm_agreed != 0;
+  SELECT RAISE(ABORT, '约定沉默确认时必须写明天数') WHERE NEW.silent_confirm_agreed = 1 AND (NEW.silent_confirm_days IS NULL OR NEW.silent_confirm_days < 1);
 END;
 
 CREATE TRIGGER contracts_kind_immutable
@@ -162,24 +155,16 @@ CREATE TABLE tasks (
 CREATE TRIGGER tasks_gates
 BEFORE INSERT ON tasks
 BEGIN
-  SELECT CASE
-    WHEN (SELECT kind FROM users WHERE id = NEW.person_id) != NEW.person_kind
-      THEN RAISE(ABORT, '人员类型与任务类型不一致')
-    WHEN (SELECT status FROM users WHERE id = NEW.person_id) != 'active'
-      THEN RAISE(ABORT, '账号已停用')
-    WHEN (SELECT identity_status FROM users WHERE id = NEW.person_id) != 'verified'
-      THEN RAISE(ABORT, '未完成实名认证，不能发单')
-    WHEN NOT EXISTS (
+  SELECT RAISE(ABORT, '人员类型与任务类型不一致') WHERE (SELECT kind FROM users WHERE id = NEW.person_id) != NEW.person_kind;
+  SELECT RAISE(ABORT, '账号已停用') WHERE (SELECT status FROM users WHERE id = NEW.person_id) != 'active';
+  SELECT RAISE(ABORT, '未完成实名认证，不能发单') WHERE (SELECT identity_status FROM users WHERE id = NEW.person_id) != 'verified';
+  SELECT RAISE(ABORT, '未完成个人信息单独同意，不能发单') WHERE NOT EXISTS (
       SELECT 1 FROM consents
       WHERE user_id = NEW.person_id AND id_number_agreed = 1 AND third_party_agreed = 1
-    ) THEN RAISE(ABORT, '未完成个人信息单独同意，不能发单')
-    WHEN (SELECT status FROM contracts WHERE id = NEW.contract_id) != 'signed'
-      THEN RAISE(ABORT, '合同未签署，不能发单')
-    WHEN (SELECT person_kind FROM contracts WHERE id = NEW.contract_id) != NEW.person_kind
-      THEN RAISE(ABORT, '任务类型与合同类型不一致')
-    WHEN (SELECT person_id FROM contracts WHERE id = NEW.contract_id) != NEW.person_id
-      THEN RAISE(ABORT, '任务与合同不属于同一人')
-  END;
+    );
+  SELECT RAISE(ABORT, '合同未签署，不能发单') WHERE (SELECT status FROM contracts WHERE id = NEW.contract_id) != 'signed';
+  SELECT RAISE(ABORT, '任务类型与合同类型不一致') WHERE (SELECT person_kind FROM contracts WHERE id = NEW.contract_id) != NEW.person_kind;
+  SELECT RAISE(ABORT, '任务与合同不属于同一人') WHERE (SELECT person_id FROM contracts WHERE id = NEW.contract_id) != NEW.person_id;
 END;
 
 CREATE TABLE deliverables (
@@ -196,14 +181,11 @@ CREATE TABLE deliverables (
 CREATE TRIGGER deliverables_contract_active
 BEFORE INSERT ON deliverables
 BEGIN
-  SELECT CASE
-    WHEN (
+  SELECT RAISE(ABORT, '合同未处于已签署状态，不能提交成果') WHERE (
       SELECT c.status FROM contracts c
       JOIN tasks t ON t.contract_id = c.id
       WHERE t.id = NEW.task_id
-    ) != 'signed'
-      THEN RAISE(ABORT, '合同未处于已签署状态，不能提交成果')
-  END;
+    ) != 'signed';
 END;
 
 CREATE TABLE acceptances (
@@ -220,14 +202,9 @@ CREATE TABLE acceptances (
 CREATE TRIGGER acceptances_rules
 BEFORE INSERT ON acceptances
 BEGIN
-  SELECT CASE
-    WHEN NEW.reviewer_id = (SELECT issuer_id FROM tasks WHERE id = NEW.task_id)
-      THEN RAISE(ABORT, '发单人与验收人不能是同一人')
-    WHEN NEW.reviewer_id = (SELECT person_id FROM tasks WHERE id = NEW.task_id)
-      THEN RAISE(ABORT, '当事人不能验收自己的成果')
-    WHEN NEW.decision = 'rejected' AND (NEW.reason IS NULL OR length(trim(NEW.reason)) = 0)
-      THEN RAISE(ABORT, '驳回必须填写原因')
-  END;
+  SELECT RAISE(ABORT, '发单人与验收人不能是同一人') WHERE NEW.reviewer_id = (SELECT issuer_id FROM tasks WHERE id = NEW.task_id);
+  SELECT RAISE(ABORT, '当事人不能验收自己的成果') WHERE NEW.reviewer_id = (SELECT person_id FROM tasks WHERE id = NEW.task_id);
+  SELECT RAISE(ABORT, '驳回必须填写原因') WHERE NEW.decision = 'rejected' AND (NEW.reason IS NULL OR length(trim(NEW.reason)) = 0);
 END;
 
 CREATE TABLE statements (
@@ -250,18 +227,11 @@ CREATE TABLE statements (
 CREATE TRIGGER statements_kind_match
 BEFORE INSERT ON statements
 BEGIN
-  SELECT CASE
-    WHEN (SELECT status FROM tasks WHERE id = NEW.task_id) != 'accepted'
-      THEN RAISE(ABORT, '验收通过后才能上传核算单')
-    WHEN (SELECT person_kind FROM tasks WHERE id = NEW.task_id) != NEW.person_kind
-      THEN RAISE(ABORT, '核算单类型与任务类型不一致')
-    WHEN NEW.person_id != (SELECT person_id FROM tasks WHERE id = NEW.task_id)
-      THEN RAISE(ABORT, '核算单与任务不属于同一人')
-    WHEN NEW.person_kind = 'employee' AND NEW.statement_kind != 'wage_slip'
-      THEN RAISE(ABORT, '劳动员工只能使用工资核算单')
-    WHEN NEW.person_kind = 'collaborator' AND NEW.statement_kind != 'service_fee'
-      THEN RAISE(ABORT, '项目合作方只能使用服务费核算单')
-  END;
+  SELECT RAISE(ABORT, '验收通过后才能上传核算单') WHERE (SELECT status FROM tasks WHERE id = NEW.task_id) != 'accepted';
+  SELECT RAISE(ABORT, '核算单类型与任务类型不一致') WHERE (SELECT person_kind FROM tasks WHERE id = NEW.task_id) != NEW.person_kind;
+  SELECT RAISE(ABORT, '核算单与任务不属于同一人') WHERE NEW.person_id != (SELECT person_id FROM tasks WHERE id = NEW.task_id);
+  SELECT RAISE(ABORT, '劳动员工只能使用工资核算单') WHERE NEW.person_kind = 'employee' AND NEW.statement_kind != 'wage_slip';
+  SELECT RAISE(ABORT, '项目合作方只能使用服务费核算单') WHERE NEW.person_kind = 'collaborator' AND NEW.statement_kind != 'service_fee';
 END;
 
 CREATE TRIGGER statements_kind_immutable
@@ -309,12 +279,8 @@ CREATE TRIGGER email_silence_only_if_agreed
 BEFORE UPDATE ON email_confirmations
 WHEN NEW.confirm_method = 'silence'
 BEGIN
-  SELECT CASE
-    WHEN OLD.silence_allowed != 1
-      THEN RAISE(ABORT, '未事先约定，沉默不构成确认')
-    WHEN (SELECT person_kind FROM statements WHERE id = NEW.statement_id) != 'collaborator'
-      THEN RAISE(ABORT, '劳动员工的工资核算单不适用沉默确认')
-  END;
+  SELECT RAISE(ABORT, '未事先约定，沉默不构成确认') WHERE OLD.silence_allowed != 1;
+  SELECT RAISE(ABORT, '劳动员工的工资核算单不适用沉默确认') WHERE (SELECT person_kind FROM statements WHERE id = NEW.statement_id) != 'collaborator';
 END;
 
 CREATE TABLE payments (
@@ -338,18 +304,11 @@ CREATE TABLE payments (
 CREATE TRIGGER payments_rules
 BEFORE INSERT ON payments
 BEGIN
-  SELECT CASE
-    WHEN (SELECT status FROM statements WHERE id = NEW.statement_id) != 'confirmed'
-      THEN RAISE(ABORT, '核算单尚未确认，不能登记付款')
-    WHEN (SELECT amount_cents FROM statements WHERE id = NEW.statement_id) != NEW.amount_cents
-      THEN RAISE(ABORT, '登记金额必须与已确认核算单一致')
-    WHEN (SELECT person_id FROM statements WHERE id = NEW.statement_id) != NEW.person_id
-      THEN RAISE(ABORT, '付款登记与核算单不属于同一人')
-    WHEN (SELECT person_kind FROM statements WHERE id = NEW.statement_id) != NEW.person_kind
-      THEN RAISE(ABORT, '付款登记类型与核算单类型不一致')
-    WHEN NEW.checker_id IS NOT NULL AND NEW.checker_id = NEW.maker_id
-      THEN RAISE(ABORT, '复核人与制单人不能是同一人')
-  END;
+  SELECT RAISE(ABORT, '核算单尚未确认，不能登记付款') WHERE (SELECT status FROM statements WHERE id = NEW.statement_id) != 'confirmed';
+  SELECT RAISE(ABORT, '登记金额必须与已确认核算单一致') WHERE (SELECT amount_cents FROM statements WHERE id = NEW.statement_id) != NEW.amount_cents;
+  SELECT RAISE(ABORT, '付款登记与核算单不属于同一人') WHERE (SELECT person_id FROM statements WHERE id = NEW.statement_id) != NEW.person_id;
+  SELECT RAISE(ABORT, '付款登记类型与核算单类型不一致') WHERE (SELECT person_kind FROM statements WHERE id = NEW.statement_id) != NEW.person_kind;
+  SELECT RAISE(ABORT, '复核人与制单人不能是同一人') WHERE NEW.checker_id IS NOT NULL AND NEW.checker_id = NEW.maker_id;
 END;
 
 CREATE TRIGGER payments_maker_immutable
