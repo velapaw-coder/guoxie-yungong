@@ -2,12 +2,14 @@ import fs from "node:fs";
 const { chromium } = await import(process.env.PLAYWRIGHT_ENTRY || "playwright");
 import path from "node:path";
 
-const base = "http://127.0.0.1:43123";
-const shots = "/opt/cursor/artifacts";
+const base = process.env.BASE_URL || "http://127.0.0.1:43123";
+const shots = process.env.SHOTS_DIR || "/opt/cursor/artifacts";
 fs.mkdirSync(shots, { recursive: true });
 const file = "/tmp/guoxie-note.txt";
 fs.writeFileSync(file, "国协云工测试附件\n这一版用于验收。\n");
 
+// 每次运行的后缀：线上已有历史数据时，核算单期间和申请内容也不会与旧记录重名。
+const RUN = String(Date.now()).slice(-6);
 const checklist = [];
 function record(name, ok, detail = "") {
   checklist.push({ name, ok, detail });
@@ -20,6 +22,23 @@ async function shot(page, name) {
   return target;
 }
 
+// 线上延迟比本地高：每次跳转后等页面数据读完再操作。
+async function settle(page) {
+  await page.waitForLoadState("networkidle").catch(() => {});
+  await page.waitForTimeout(700);
+  await page.getByText("正在读取").first().waitFor({ state: "detached", timeout: 20000 }).catch(() => {});
+  await page.getByText("正在核对登录状态").first().waitFor({ state: "detached", timeout: 20000 }).catch(() => {});
+}
+function patch(page) {
+  const go = page.goto.bind(page);
+  page.goto = async (...args) => {
+    const result = await go(...args);
+    await settle(page);
+    return result;
+  };
+  return page;
+}
+
 async function login(page, email, password, fillTestId) {
   await page.goto(`${base}/login/`, { waitUntil: "networkidle" });
   if (fillTestId) await page.getByTestId(fillTestId).click();
@@ -27,6 +46,7 @@ async function login(page, email, password, fillTestId) {
   await page.getByTestId("login-password").fill(password);
   await page.getByTestId("login-submit").click();
   await page.getByTestId("whoami").waitFor({ timeout: 20000 });
+  await settle(page);
 }
 
 async function logout(page) {
@@ -36,7 +56,7 @@ async function logout(page) {
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const page = patch(await browser.newPage({ viewport: { width: 1280, height: 900 } }));
   const consoleErrors = [];
   page.on("pageerror", (error) => consoleErrors.push(error.message));
   page.on("dialog", (dialog) => dialog.accept());
@@ -50,7 +70,7 @@ async function main() {
     record("登录页桌面与手机截图", true);
 
     await page.getByTestId("go-contact").click();
-    await page.getByText("010-66001800").waitFor();
+    await page.getByText("010-66001800").first().waitFor();
     await shot(page, "03-contact");
     record("联系与投诉页", true);
 
@@ -64,6 +84,7 @@ async function main() {
 
     await login(page, "maker@guoxie.chang2.ccwu.cc", "Test-only-Maker-2026", "fill-maker");
     await shot(page, "05-maker-home");
+    await page.waitForFunction(() => !document.body.innerText.includes("正在读取"), null, { timeout: 20000 }).catch(() => {});
     const homeText = await page.getByTestId("home-employees").innerText();
     const homeRight = await page.getByTestId("home-collaborators").innerText();
     if (!homeText.includes("林晓雯") || !homeRight.includes("周启明") || homeText.includes("周启明") || homeRight.includes("林晓雯")) {
@@ -224,18 +245,18 @@ async function main() {
       await page.getByTestId("statement-submit").click();
       await page.getByText(period).waitFor();
     }
-    await draftStatement("草稿作废专期", "6400.00", "这张草稿会被作废");
+    await draftStatement(`草稿作废专期${RUN}`, "6400.00", "这张草稿会被作废");
     await page.getByTestId("void-statement-1").click();
     await page.getByTestId("statement-v1").getByText("已作废").waitFor();
     record("作废工资核算单草稿", true);
-    await draftStatement("发送作废专期", "6400.00", "这张发送后作废");
+    await draftStatement(`发送作废专期${RUN}`, "6400.00", "这张发送后作废");
     await page.getByTestId("send-statement-2").click();
     await page.getByTestId("void-sent-2").waitFor();
     await page.getByTestId("void-sent-2").click();
     await page.getByTestId("statement-v2").getByText("已作废").waitFor();
     record("作废已发送的工资核算单", true);
 
-    await draftStatement("异议专期十一月", "6300.00", "先按少记的金额出单");
+    await draftStatement(`异议专期十一月${RUN}`, "6300.00", "先按少记的金额出单");
     await page.getByTestId("send-statement-3").click();
     await page.getByTestId("void-sent-3").waitFor();
     record("发送有异议的工资核算单", true);
@@ -251,7 +272,7 @@ async function main() {
     await logout(page);
     await login(page, "maker@guoxie.chang2.ccwu.cc", "Test-only-Maker-2026", "fill-maker");
     await page.goto(`${base}/task/?id=${employeeTask}`);
-    await draftStatement("确认专期十一月", "6400.00", "按劳动合同约定的工资重出");
+    await draftStatement(`确认专期十一月${RUN}`, "6400.00", "按劳动合同约定的工资重出");
     await page.getByTestId("send-statement-4").click();
     await page.getByTestId("void-sent-4").waitFor();
     record("重发正确的工资核算单", true);
@@ -346,13 +367,13 @@ async function main() {
     await logout(page);
     await login(page, "maker@guoxie.chang2.ccwu.cc", "Test-only-Maker-2026", "fill-maker");
     await page.goto(`${base}/task/?id=${collaboratorTask}`);
-    await draftStatement("异议专期服务", "17900.00", "先按少记的服务费出单");
+    await draftStatement(`异议专期服务${RUN}`, "17900.00", "先按少记的服务费出单");
     await page.getByTestId("send-statement-1").click();
     await page.getByTestId("void-sent-1").waitFor();
     await page.getByTestId("nav-outbox").click();
     await page.getByTestId("outbox-body").first().waitFor();
     const bodies = await page.getByTestId("outbox-body").allInnerTexts();
-    const mail = bodies.find((text) => text.includes("异议专期服务"));
+    const mail = bodies.find((text) => text.includes(`异议专期服务${RUN}`));
     const token = mail?.match(/token=([0-9a-f]+)/)?.[1];
     if (!token) throw new Error(`邮件里没有确认链接：${bodies[0] ?? ""}`);
     await shot(page, "17-outbox");
@@ -366,7 +387,7 @@ async function main() {
     record("确认链接提交服务费异议", true);
 
     await page.goto(`${base}/task/?id=${collaboratorTask}`);
-    await draftStatement("确认专期服务", "18000.00", "按约定服务费重出");
+    await draftStatement(`确认专期服务${RUN}`, "18000.00", "按约定服务费重出");
     await page.getByTestId("send-statement-2").click();
     await page.getByTestId("reply-text-2").fill("指定邮箱回复：确认这张服务费核算单");
     await page.getByTestId("reply-submit-2").click();
@@ -387,6 +408,54 @@ async function main() {
     await page.getByTestId("statement-v2").getByText("已复核").waitFor();
     await shot(page, "20-collaborator-approved");
     record("复核人通过服务费付款", true);
+
+    // 付款复核后该任务不再出新核算单，所以用一张新的小任务验证“在确认链接页点确认”。
+    await logout(page);
+    await login(page, "maker@guoxie.chang2.ccwu.cc", "Test-only-Maker-2026", "fill-maker");
+    await page.goto(`${base}/collaborator/?id=` + (await collaboratorId(page)));
+    await page.getByTestId("task-title").fill(`链接确认小任务${RUN}`);
+    await page.getByTestId("task-what").fill("整理一页活动物料清单");
+    await page.getByTestId("task-deliver").fill("物料清单一份");
+    await page.getByTestId("task-pay").fill("按交付件一次性服务费 1200 元");
+    await page.getByTestId("task-when").fill("验收通过并确认服务费核算单后登记付款");
+    await page.getByTestId("task-amount").fill("1200.00");
+    await page.getByTestId("create-task").click();
+    await page.waitForURL(/\/task\/\?id=/);
+    const linkTask = new URL(page.url()).searchParams.get("id");
+    await logout(page);
+    await login(page, "collaborator@guoxie.chang2.ccwu.cc", "Test-only-Collaborator-2026", "fill-collaborator");
+    await page.goto(`${base}/task/?id=${linkTask}`);
+    await page.getByTestId("deliver-note").fill("物料清单");
+    await page.getByTestId("deliver-file").setInputFiles(file);
+    await page.getByTestId("deliver-submit").click();
+    await page.getByTestId("deliverable-v1").waitFor();
+    await logout(page);
+    await login(page, "checker@guoxie.chang2.ccwu.cc", "Test-only-Checker-2026", "fill-checker");
+    await page.goto(`${base}/task/?id=${linkTask}`);
+    await page.getByTestId("accept-reason").fill("清单齐全，验收通过");
+    await page.getByTestId("accept-submit").click();
+    await page.getByText("已通过").first().waitFor();
+    await logout(page);
+    await login(page, "maker@guoxie.chang2.ccwu.cc", "Test-only-Maker-2026", "fill-maker");
+    await page.goto(`${base}/task/?id=${linkTask}`);
+    await draftStatement(`链接确认专期${RUN}`, "1200.00", "用确认链接确认");
+    await page.getByTestId("send-statement-1").click();
+    await page.getByTestId("void-sent-1").waitFor();
+    await page.goto(`${base}/admin/outbox/`);
+    await page.getByTestId("outbox-body").first().waitFor();
+    const linkMail = (await page.getByTestId("outbox-body").allInnerTexts()).find((text) => text.includes(`链接确认专期${RUN}`));
+    const linkToken = linkMail?.match(/token=([0-9a-f]+)/)?.[1];
+    if (!linkToken) throw new Error("链接确认小任务的邮件里没有确认链接");
+    await logout(page);
+    await page.goto(`${base}/confirm/?token=${linkToken}`);
+    await page.getByTestId("link-confirm-text").fill("本人通过确认链接确认");
+    await page.getByTestId("link-confirm").click();
+    await page.getByTestId("confirm-done").getByText("已确认", { exact: true }).first().waitFor();
+    await shot(page, "20b-confirm-by-link");
+    await login(page, "maker@guoxie.chang2.ccwu.cc", "Test-only-Maker-2026", "fill-maker");
+    await page.goto(`${base}/task/?id=${linkTask}`);
+    await page.getByTestId("statement-v1").getByText("已确认", { exact: true }).first().waitFor();
+    record("在确认链接页点确认，核算单变为已确认", true, linkTask || "");
 
     await logout(page);
     await page.goto(`${base}/register/`);
@@ -421,18 +490,21 @@ async function main() {
     await page.getByTestId("verify-submit").click();
     await page.getByTestId("verify-done").waitFor();
     await page.goto(`${base}/privacy/`);
-    await page.getByTestId("privacy-content").fill("申请查阅本人实名掩码和同意记录");
+    const privacyText = `申请查阅本人实名掩码和同意记录${RUN}`;
+    await page.getByTestId("privacy-content").fill(privacyText);
     await page.getByTestId("privacy-submit").click();
-    await page.getByText("申请查阅本人实名掩码和同意记录").waitFor();
+    await page.getByText(privacyText).waitFor();
     await shot(page, "22-consent-verify");
     record("单独同意、线下实名和个人信息申请", true);
 
     await logout(page);
     await login(page, "maker@guoxie.chang2.ccwu.cc", "Test-only-Maker-2026", "fill-maker");
     await page.goto(`${base}/admin/requests/`);
-    await page.getByTestId("handle-resolution").first().fill("已提供本人掩码和同意版本，申请受理");
-    await page.getByTestId("handle-submit").first().click();
-    await page.getByText("已提供本人掩码和同意版本").waitFor();
+    const requestRow = page.locator("li").filter({ hasText: privacyText });
+    const resolution = `已提供本人掩码和同意版本，申请受理${RUN}`;
+    await requestRow.getByTestId("handle-resolution").fill(resolution);
+    await requestRow.getByTestId("handle-submit").click();
+    await page.getByText(resolution).waitFor();
     record("受理个人信息申请", true);
     await page.goto(`${base}/employees/`);
     await page.getByTestId(`employee-${trialEmployee}`).click();
