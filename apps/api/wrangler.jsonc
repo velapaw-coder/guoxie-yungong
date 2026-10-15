@@ -33,7 +33,7 @@
     "directory": "../web/out",
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
-    "not_found_handling": "none",
+    "not_found_handling": "404-page",
     "run_worker_first": ["/api/*"]
   },
   "env": {
@@ -73,7 +73,7 @@
         "directory": "../web/out",
         "binding": "ASSETS",
         "html_handling": "auto-trailing-slash",
-        "not_found_handling": "none",
+        "not_found_handling": "404-page",
         "run_worker_first": ["/api/*"]
       }
     }
