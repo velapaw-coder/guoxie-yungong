@@ -27,6 +27,13 @@ export function clearAuthToken() {
   sessionStorage.removeItem("gy_token");
 }
 
+/** fromApi 为 true 表示响应来自本平台接口（JSON），而不是网络或边缘节点的错误页。 */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number, readonly fromApi: boolean) {
+    super(message);
+  }
+}
+
 export async function api<T>(path: string, options: { method?: string; json?: unknown; form?: FormData; token?: string | null } = {}): Promise<T> {
   const headers = new Headers();
   const token = options.token === undefined ? authToken() : options.token;
@@ -39,8 +46,17 @@ export async function api<T>(path: string, options: { method?: string; json?: un
   }
   const response = await fetch(`${API_BASE}${path}`, { method: options.method ?? (body ? "POST" : "GET"), headers, body });
   const text = await response.text();
-  const data = text ? JSON.parse(text) as { error?: string } : {};
-  if (!response.ok) throw new Error(data.error || "请求没有完成");
+  let data: { error?: string } = {};
+  let fromApi = true;
+  if (text) {
+    try {
+      data = JSON.parse(text) as { error?: string };
+    } catch {
+      fromApi = false;
+    }
+  }
+  if (!response.ok) throw new ApiError(data.error || "请求没有完成，请稍后重试", response.status, fromApi);
+  if (!fromApi) throw new ApiError("请求没有完成，请稍后重试", response.status, false);
   return data as T;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, authToken, clearAuthToken, setAuthToken, type Me } from "./api";
+import { api, ApiError, authToken, clearAuthToken, setAuthToken, type Me } from "./api";
 
 type SessionValue = {
   me: Me | null | undefined;
@@ -23,15 +23,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setMe(null);
       return null;
     }
-    try {
-      const user = await api<Me>("/api/auth/me");
-      setMe(user);
-      return user;
-    } catch {
-      clearAuthToken();
-      setMe(null);
-      return null;
+    // 只有本平台明确回复未登录或已停用时才清掉令牌；网络抖动先重试，不把人踢下线。
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const user = await api<Me>("/api/auth/me");
+        setMe(user);
+        return user;
+      } catch (error) {
+        if (error instanceof ApiError && error.fromApi && (error.status === 401 || error.status === 403)) {
+          clearAuthToken();
+          setMe(null);
+          return null;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+      }
     }
+    setMe(null);
+    return null;
   }, []);
 
   useEffect(() => {
