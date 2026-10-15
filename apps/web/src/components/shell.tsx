@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { Me } from "@/lib/api";
 import { hasRole } from "@/lib/labels";
 import { useSession } from "@/lib/session";
 import { Loading } from "./bits";
+import { Logo } from "./logo";
 
 type NavItem = { href: string; label: string; testid: string };
 type NavGroup = { title: string; tone: string; items: NavItem[] };
@@ -105,6 +106,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   const { me, logout } = useSession();
   const pub = isPublic(pathname);
   const sandbox = isSandbox(pathname);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!pub && me === null) router.replace("/login/");
@@ -132,23 +134,40 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
 
   if (!pub && !me) return null;
 
+  // 首页自带整页版式（页头、页脚），不套系统外框。
+  if (pathname === "/" || pathname === "") return <>{children}</>;
+
+  const groups = me ? groupsFor(me) : [];
+  const roleLabel = me ? (me.kind === "employee" ? "劳动员工" : me.kind === "collaborator" ? "项目合作方" : "管理人员") : "";
+  const current = `${pathname}`.replace(/\/?$/, "/");
+
   return (
-    <div className="min-h-screen">
-      <header className="border-b bg-card/80">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4">
-          <Link href={me ? "/home/" : "/"} className="flex items-center gap-3">
-            <span className="seal text-xs">国协</span>
-            <span>
-              <span className="block text-lg font-semibold leading-none">国协云工</span>
-              <span className="text-xs text-muted-foreground">国协云工集团有限公司 · 劳动与项目合作分开办理</span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-2 text-sm">
+    <div className="min-h-screen bg-[var(--gx-bg)]">
+      <header className="sticky top-0 z-30 border-b border-[var(--gx-line)] bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            {me ? (
+              <button
+                type="button"
+                className="grid h-11 w-11 place-items-center rounded-lg text-[var(--gx-ink)] hover:bg-[var(--gx-blue-50)] lg:hidden"
+                aria-label={menuOpen ? "收起菜单" : "打开菜单"}
+                aria-expanded={menuOpen}
+                data-testid="menu-toggle"
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+                </svg>
+              </button>
+            ) : null}
+            <Logo href={me ? "/home/" : "/"} />
+          </div>
+          <div className="flex min-w-0 items-center gap-2 text-sm">
             {me ? (
               <>
-                <span data-testid="whoami">
-                  {me.name}
-                  <span className="text-muted-foreground"> · {me.kind === "employee" ? "劳动员工" : me.kind === "collaborator" ? "项目合作方" : "管理人员"}</span>
+                <span data-testid="whoami" className="hidden min-w-0 truncate sm:inline">
+                  <span className="font-medium">{me.name}</span>
+                  <span className="text-muted-foreground"> · {roleLabel}</span>
                 </span>
                 <Button
                   type="button"
@@ -162,33 +181,60 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
                 </Button>
               </>
             ) : (
-              <Link href="/login/" className="underline-offset-4 hover:underline" data-testid="header-login">
-                登录
-              </Link>
+              <>
+                <Link href="/" className="hidden min-h-11 items-center px-2 text-[var(--gx-text)] hover:text-[var(--gx-blue)] sm:inline-flex">
+                  首页
+                </Link>
+                <Button asChild>
+                  <Link href="/login/" data-testid="header-login">
+                    登录
+                  </Link>
+                </Button>
+              </>
             )}
           </div>
         </div>
+      </header>
+      <div className="mx-auto flex max-w-7xl gap-6 px-4">
         {me ? (
-          <nav className="mx-auto flex max-w-6xl flex-col gap-3 px-4 pb-4 md:flex-row" data-testid="main-nav">
-            {groupsFor(me).map((group) => (
-              <div key={group.title} className={`min-w-0 flex-1 rounded-xl bg-background px-3 py-2 ${group.tone}`}>
-                <p className="mb-1 text-xs text-muted-foreground">{group.title}</p>
-                <div className="flex flex-wrap gap-x-3 gap-y-1">
-                  {group.items.map((item) => (
-                    <Link key={item.testid} href={item.href} data-testid={item.testid} className="text-sm underline-offset-4 hover:underline">
-                      {item.label}
-                    </Link>
-                  ))}
+          <nav
+            className={`${menuOpen ? "block" : "hidden"} fixed inset-x-0 top-16 bottom-0 z-20 overflow-y-auto bg-white px-4 py-4 lg:sticky lg:top-20 lg:block lg:h-[calc(100vh-6rem)] lg:w-60 lg:shrink-0 lg:rounded-2xl lg:border lg:border-[var(--gx-line)] lg:bg-white lg:px-3 lg:shadow-[var(--gx-shadow)] lg:my-4`}
+            data-testid="main-nav"
+          >
+            <p className="mb-3 px-2 text-sm sm:hidden">
+              <span className="font-medium">{me.name}</span>
+              <span className="text-muted-foreground"> · {roleLabel}</span>
+            </p>
+            {groups.map((group) => (
+              <div key={group.title} className="mb-4">
+                <p className="mb-1 px-3 text-xs font-medium tracking-wider text-muted-foreground">{group.title}</p>
+                <div className="grid gap-0.5">
+                  {group.items.map((item) => {
+                    const active = current === item.href.split("?")[0] && !(item.href.includes("?") && pathname === "/home/");
+                    return (
+                      <Link
+                        key={item.testid}
+                        href={item.href}
+                        data-testid={item.testid}
+                        onClick={() => setMenuOpen(false)}
+                        className={`flex min-h-11 items-center rounded-lg px-3 text-sm transition-colors lg:min-h-10 ${active ? "bg-[var(--gx-blue-50)] font-medium text-[var(--gx-blue)]" : "text-[var(--gx-text)] hover:bg-[var(--gx-blue-50)] hover:text-[var(--gx-blue)]"}`}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ))}
           </nav>
         ) : null}
-      </header>
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6">{children}</main>
-      <footer className="mx-auto max-w-6xl px-4 pb-8 text-xs text-muted-foreground">
-        投诉电话 010-66001800 · privacy@guoxie.chang2.ccwu.cc · 合同文本为法务初稿 V0.1，未经法务审核，不得对外使用。本平台不计算工资、个税、社保、公积金，也不划转资金。
-      </footer>
+        <div className="min-w-0 flex-1">
+          <main className="mx-auto flex max-w-6xl min-w-0 flex-col gap-6 py-6">{children}</main>
+          <footer className="mx-auto max-w-6xl pb-8 text-xs leading-5 text-muted-foreground">
+            投诉电话 010-66001800 · privacy@guoxie.chang2.ccwu.cc · 合同文本为法务初稿 V0.1，未经法务审核，不得对外使用。本平台不计算工资、个税、社保、公积金，也不划转资金。
+          </footer>
+        </div>
+      </div>
     </div>
   );
 }

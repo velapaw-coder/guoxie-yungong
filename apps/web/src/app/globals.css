@@ -49,38 +49,49 @@
 }
 
 :root {
-  --background: oklch(0.955 0.018 88);
-  --foreground: oklch(0.24 0.02 70);
-  --card: oklch(0.985 0.01 90);
-  --card-foreground: oklch(0.24 0.02 70);
-  --popover: oklch(0.985 0.01 90);
-  --popover-foreground: oklch(0.24 0.02 70);
-  --primary: oklch(0.38 0.06 160);
-  --primary-foreground: oklch(0.97 0.01 90);
-  --secondary: oklch(0.92 0.02 85);
-  --secondary-foreground: oklch(0.28 0.02 70);
-  --muted: oklch(0.93 0.02 85);
-  --muted-foreground: oklch(0.46 0.02 75);
-  --accent: oklch(0.9 0.03 85);
-  --accent-foreground: oklch(0.28 0.02 70);
-  --destructive: oklch(0.48 0.14 28);
-  --border: oklch(0.84 0.03 82);
-  --input: oklch(0.84 0.03 82);
-  --ring: oklch(0.48 0.06 160);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* 国协云工设计系统：蓝白主色。所有页面共用这些变量。 */
+  --gx-blue: #1f6bff;
+  --gx-blue-600: #1559e0;
+  --gx-blue-50: #eef4ff;
+  --gx-blue-100: #dde8ff;
+  --gx-navy: #0f1d3a;
+  --gx-ink: #13203b;
+  --gx-text: #4a5873;
+  --gx-line: #e3e9f4;
+  --gx-bg: #f5f8fd;
+  --gx-shadow: 0 6px 24px rgba(31, 75, 160, 0.08), 0 1px 3px rgba(31, 75, 160, 0.06);
+  --background: var(--gx-bg);
+  --foreground: var(--gx-ink);
+  --card: #ffffff;
+  --card-foreground: var(--gx-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--gx-ink);
+  --primary: var(--gx-blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--gx-blue-50);
+  --secondary-foreground: var(--gx-blue-600);
+  --muted: #f0f4fa;
+  --muted-foreground: #5d6b85;
+  --accent: var(--gx-blue-50);
+  --accent-foreground: var(--gx-blue-600);
+  --destructive: #d93a3a;
+  --border: var(--gx-line);
+  --input: #d5deec;
+  --ring: var(--gx-blue);
+  --chart-1: #1f6bff;
+  --chart-2: #4d8dff;
+  --chart-3: #7eadff;
+  --chart-4: #a9c8ff;
+  --chart-5: #d4e3ff;
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--gx-ink);
+  --sidebar-primary: var(--gx-blue);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--gx-blue-50);
+  --sidebar-accent-foreground: var(--gx-blue-600);
+  --sidebar-border: var(--gx-line);
+  --sidebar-ring: var(--gx-blue);
 }
 
 .dark {
@@ -131,18 +142,74 @@
 }
 
 .kind-employee {
-  border-top: 3px solid oklch(0.38 0.06 160);
+  border-top: 3px solid var(--gx-blue);
 }
 .kind-collaborator {
-  border-top: 3px solid oklch(0.55 0.09 75);
+  border-top: 3px solid #12a6a0;
 }
-.seal {
-  display: grid;
-  place-items: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  border: 2px solid oklch(0.48 0.14 28);
-  color: oklch(0.48 0.14 28);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+html {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+body {
+  overflow-x: hidden;
+}
+img,
+svg,
+video {
+  max-width: 100%;
+}
+pre,
+code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+select {
+  min-height: 2.25rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--input);
+  background: #fff;
+  padding: 0 0.6rem;
+}
+/* H5：输入框 16px 防止 iOS 放大；可点区域至少 44px。 */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  button,
+  [data-slot="button"] {
+    min-height: 44px;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+/* 长邮箱、令牌、链接在窄屏上换行，不撑破页面。 */
+main,
+main li,
+main p,
+main pre,
+main td {
+  overflow-wrap: anywhere;
+}
+main li,
+main form,
+main section {
+  min-width: 0;
+}
+@media (max-width: 767px) {
+  main a:not(p a),
+  footer a {
+    min-height: 44px;
+  }
+  main a:not(p a)[class*="flex"],
+  main a:not(p a)[class*="block"] {
+    align-items: center;
+  }
 }
