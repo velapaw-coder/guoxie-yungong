@@ -8,7 +8,7 @@ import type { Me } from "@/lib/api";
 import { hasRole } from "@/lib/labels";
 import { useSession } from "@/lib/session";
 import { Loading } from "./bits";
-import { Logo } from "./logo";
+import { Logo, LogoMark } from "./logo";
 
 type NavItem = { href: string; label: string; testid: string };
 type NavGroup = { title: string; tone: string; items: NavItem[] };
@@ -201,6 +201,10 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
             className={`${menuOpen ? "block" : "hidden"} fixed inset-x-0 top-16 bottom-0 z-20 overflow-y-auto bg-white px-4 py-4 lg:sticky lg:top-20 lg:block lg:h-[calc(100vh-6rem)] lg:w-60 lg:shrink-0 lg:rounded-2xl lg:border lg:border-[var(--gx-line)] lg:bg-white lg:px-3 lg:shadow-[var(--gx-shadow)] lg:my-4`}
             data-testid="main-nav"
           >
+            <div className="mb-3 flex items-center gap-2 border-b border-[var(--gx-line)] px-2 pb-3">
+              <LogoMark className="h-7 w-auto" />
+              <span className="text-sm font-medium text-[var(--gx-ink)]">{roleLabel}工作台</span>
+            </div>
             <p className="mb-3 px-2 text-sm sm:hidden">
               <span className="font-medium">{me.name}</span>
               <span className="text-muted-foreground"> · {roleLabel}</span>
