@@ -99,7 +99,7 @@ export default function RegisterPage() {
               {done ? (
                 <p className="text-sm" data-testid="register-done">
                   {done} 已注册为{copy.person}。请{" "}
-                  <Link href="/" className="underline">
+                  <Link href="/login/" className="underline">
                     返回登录
                   </Link>
                   ，再完成单独同意和实名。

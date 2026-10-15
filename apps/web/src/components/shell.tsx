@@ -92,7 +92,7 @@ function groupsFor(me: Me): NavGroup[] {
 
 function isPublic(pathname: string) {
   const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  return path === "/" || path.startsWith("/register") || path.startsWith("/confirm") || path.startsWith("/contact");
+  return path === "/" || path.startsWith("/login") || path.startsWith("/register") || path.startsWith("/confirm") || path.startsWith("/contact");
 }
 
 function isSandbox(pathname: string) {
@@ -107,7 +107,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   const sandbox = isSandbox(pathname);
 
   useEffect(() => {
-    if (!pub && me === null) router.replace("/");
+    if (!pub && me === null) router.replace("/login/");
   }, [pub, sandbox, me, router]);
 
   if (sandbox) {
@@ -155,14 +155,14 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
                   variant="outline"
                   data-testid="logout"
                   onClick={() => {
-                    void logout().then(() => router.replace("/"));
+                    void logout().then(() => router.replace("/login/"));
                   }}
                 >
                   退出
                 </Button>
               </>
             ) : (
-              <Link href="/" className="underline-offset-4 hover:underline">
+              <Link href="/login/" className="underline-offset-4 hover:underline" data-testid="header-login">
                 登录
               </Link>
             )}

@@ -21,7 +21,7 @@ async function shot(page, name) {
 }
 
 async function login(page, email, password, fillTestId) {
-  await page.goto(`${base}/`, { waitUntil: "networkidle" });
+  await page.goto(`${base}/login/`, { waitUntil: "networkidle" });
   if (fillTestId) await page.getByTestId(fillTestId).click();
   await page.getByTestId("login-email").fill(email);
   await page.getByTestId("login-password").fill(password);
@@ -42,7 +42,7 @@ async function main() {
   page.on("dialog", (dialog) => dialog.accept());
 
   try {
-    await page.goto(`${base}/`, { waitUntil: "networkidle" });
+    await page.goto(`${base}/login/`, { waitUntil: "networkidle" });
     await shot(page, "01-login-desktop");
     await page.setViewportSize({ width: 390, height: 844 });
     await shot(page, "02-login-mobile");
@@ -54,7 +54,7 @@ async function main() {
     await shot(page, "03-contact");
     record("联系与投诉页", true);
 
-    await page.goto(`${base}/`);
+    await page.goto(`${base}/login/`);
     await page.getByTestId("login-email").fill("hemu@guoxie.chang2.ccwu.cc");
     await page.getByTestId("login-password").fill("Test-only-Terminated-2026");
     await page.getByTestId("login-submit").click();
