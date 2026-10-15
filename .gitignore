@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.wrangler/
+out/
+dist/
+.dev.vars
+playwright-report/
+test-results/
+uploads/
+*.log
+.DS_Store

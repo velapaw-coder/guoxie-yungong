@@ -1,0 +1,11 @@
+{
+  "name": "guoxie-yungong",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "test": "npm --prefix apps/api test",
+    "build": "npm --prefix apps/web run build",
+    "deploy": "bash scripts/deploy.sh"
+  }
+}

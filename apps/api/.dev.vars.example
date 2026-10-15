@@ -1,0 +1,4 @@
+# 本地不设置这两项时，接口使用开发回退值，wrangler dev 仍可登录。
+# 生产环境必须由 scripts/deploy.sh 写入 Workers Secrets，并在真实使用前轮换。
+SESSION_PEPPER=dev-session-pepper
+ESIGN_WEBHOOK_SECRET=dev-esign-webhook-secret

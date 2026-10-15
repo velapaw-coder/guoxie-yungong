@@ -1,0 +1,81 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "guoxie-yungong",
+  "account_id": "d0e845fde248a912a971bdeb055c6bd4",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "vars": {
+    "ENVIRONMENT": "dev",
+    "WEB_ORIGIN": "http://127.0.0.1:43123",
+    "CONSENT_VERSION": "PIPL-2026-10-15",
+    "EMAIL_FROM": "notice@guoxie.chang2.ccwu.cc"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "guoxie-yungong",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      "bucket_name": "guoxie-yungong-files"
+    }
+  ],
+  "triggers": {
+    "crons": ["15 1 * * *"]
+  },
+  "assets": {
+    "directory": "../web/out",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none",
+    "run_worker_first": ["/api/*"]
+  },
+  "env": {
+    "prod": {
+      "name": "guoxie-yungong",
+      "workers_dev": false,
+      "vars": {
+        "ENVIRONMENT": "prod",
+        "WEB_ORIGIN": "https://guoxie.chang2.ccwu.cc",
+        "CONSENT_VERSION": "PIPL-2026-10-15",
+        "EMAIL_FROM": "notice@guoxie.chang2.ccwu.cc"
+      },
+      "routes": [
+        {
+          "pattern": "guoxie.chang2.ccwu.cc",
+          "custom_domain": true
+        }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "guoxie-yungong",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "FILES",
+          "bucket_name": "guoxie-yungong-files"
+        }
+      ],
+      "triggers": {
+        "crons": ["15 1 * * *"]
+      },
+      "assets": {
+        "directory": "../web/out",
+        "binding": "ASSETS",
+        "html_handling": "auto-trailing-slash",
+        "not_found_handling": "none",
+        "run_worker_first": ["/api/*"]
+      }
+    }
+  }
+}
