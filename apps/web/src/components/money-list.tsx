@@ -54,7 +54,7 @@ export function MoneyList({ kind, table }: { kind: PersonKind; table: "statement
                 </TableCell>
                 <TableCell>
                   {"taskId" in row ? (
-                    <Link className="underline-offset-4 hover:underline" href={`/task/?id=${row.taskId}`}>
+                    <Link className="inline-flex min-h-11 items-center px-1 font-medium text-[var(--gx-blue)] underline-offset-4 hover:underline md:min-h-0" href={`/task/?id=${row.taskId}`}>
                       打开
                     </Link>
                   ) : (

@@ -213,3 +213,10 @@ main section {
     align-items: center;
   }
 }
+@media (max-width: 767px) {
+  main label:has(> input[type="checkbox"]),
+  main label:has(> input[type="radio"]) {
+    min-height: 44px;
+    align-items: center;
+  }
+}
