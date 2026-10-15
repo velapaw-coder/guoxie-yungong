@@ -9,7 +9,9 @@ import type { Actor, Ctx, Env, Upload } from "./types";
 import { mustUser } from "./accounts";
 import { one, run, sessionPepper } from "./util";
 
-let seeding: Promise<{ seeded: boolean }> | null = null;
+// 不能在请求之间共享 Promise：Workers 里一个请求等待另一个请求的 D1 I/O 会一直挂起。
+// 只缓存“已确认有数据”这个布尔值，每个请求自己查一次。
+let seedChecked = false;
 
 export function shouldAutoSeed(env: Env): boolean {
   return env.SEED !== "off" && (env.ENVIRONMENT === "dev" || env.ENVIRONMENT === "prod");
@@ -17,8 +19,9 @@ export function shouldAutoSeed(env: Env): boolean {
 
 export async function ensureSeed(env: Env): Promise<void> {
   if (!shouldAutoSeed(env)) return;
-  if (!seeding) seeding = seedDatabase(env).finally(() => { seeding = null; });
-  await seeding;
+  if (seedChecked) return;
+  await seedDatabase(env);
+  seedChecked = true;
 }
 
 function textFile(filename: string, content: string): Upload {
